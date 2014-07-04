@@ -327,7 +327,7 @@ if ($results) {
                     title="Sort By Date <?php echo $negorder; ?>">Date</a></th>
 	        <th width="280">
                  <a <?php echo $subj_sort; ?> href="tickets.php?sort=subj&order=<?php echo $negorder; ?><?php echo $qstr; ?>"
-                    title="Sort By Subject <?php echo $negorder; ?>">Subject</a></th>
+                    title="Sort By Subject <?php echo $negorder; ?>">Temat</a></th>
             <th width="170">
                 <a <?php echo $name_sort; ?> href="tickets.php?sort=name&order=<?php echo $negorder; ?><?php echo $qstr; ?>"
                      title="Sort By Name <?php echo $negorder; ?>">From</a></th>
