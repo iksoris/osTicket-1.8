@@ -226,6 +226,7 @@ $(function() {
         var el = $(el),
             options = $.extend({
                 'air': el.hasClass('no-bar'),
+					 'pastePlainText': true,
                 'airButtons': ['formatting', '|', 'bold', 'italic', 'underline', 'deleted', '|', 'unorderedlist', 'orderedlist', 'outdent', 'indent', '|', 'image'],
                 'buttons': ['html', '|', 'formatting', '|', 'bold',
                     'italic', 'underline', 'deleted', '|', 'unorderedlist',
