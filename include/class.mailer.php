@@ -25,11 +25,12 @@ class Mailer {
 
     var $ht = array();
     var $attachments = array();
+    var $options = array();
 
     var $smtp = array();
     var $eol="\n";
 
-    function Mailer($email=null, $options=null) {
+    function Mailer($email=null, array $options=array()) {
         global $cfg;
 
         if(is_object($email) && $email->isSMTPEnabled() && ($info=$email->getSMTPInfo())) { //is SMTP enabled for the current email?
@@ -46,6 +47,7 @@ class Mailer {
 
         $this->email = $email;
         $this->attachments = array();
+        $this->options = $options;
     }
 
     function getEOL() {
@@ -114,7 +116,12 @@ class Mailer {
             'X-Mailer' =>'osTicket Mailer',
         );
 
-        if ($this->getEmail() instanceof Email)
+        // Add in the options passed to the constructor
+        $options = ($options ?: array()) + $this->options;
+
+        if (isset($options['nobounce']) && $options['nobounce'])
+            $headers['Return-Path'] = '<>';
+        elseif ($this->getEmail() instanceof Email)
             $headers['Return-Path'] = $this->getEmail()->getEmail();
 
         //Bulk.
@@ -148,6 +155,13 @@ class Mailer {
             }
         }
 
+        // Use Mail_mime default initially
+        $eol = null;
+
+        // MAIL_EOL setting can be defined in `ost-config.php`
+        if (defined('MAIL_EOL') && is_string(MAIL_EOL)) {
+            $eol = MAIL_EOL;
+        }
         // The Suhosin patch will muck up the line endings in some
         // cases
         //
@@ -155,12 +169,12 @@ class Mailer {
         // https://github.com/osTicket/osTicket-1.8/issues/202
         // http://pear.php.net/bugs/bug.php?id=12032
         // http://us2.php.net/manual/en/function.mail.php#97680
-        if ((extension_loaded('suhosin') || defined("SUHOSIN_PATCH"))
-                && !$this->getSMTPInfo())
-            $mime = new Mail_mime("\n");
-        else
-            // Use defaults
-            $mime = new Mail_mime();
+        elseif ((extension_loaded('suhosin') || defined("SUHOSIN_PATCH"))
+            && !$this->getSMTPInfo()
+        ) {
+            $eol = "\n";
+        }
+        $mime = new Mail_mime($eol);
 
         // If the message is not explicitly declared to be a text message,
         // then assume that it needs html processing to create a valid text
@@ -169,10 +183,12 @@ class Mailer {
         $mid_token = (isset($options['thread']))
             ? $options['thread']->asMessageId($to) : '';
         if (!(isset($options['text']) && $options['text'])) {
-            if ($cfg && $cfg->stripQuotedReply() && ($tag=$cfg->getReplySeparator())
+            $tag = '';
+            if ($cfg && $cfg->stripQuotedReply()
                     && (!isset($options['reply-tag']) || $options['reply-tag']))
-                $message = "<div style=\"display:none\"
-                    data-mid=\"$mid_token\">$tag<br/><br/></div>$message";
+                $tag = $cfg->getReplySeparator() . '<br/><br/>';
+            $message = "<div style=\"display:none\"
+                data-mid=\"$mid_token\">$tag</div>$message";
             $txtbody = rtrim(Format::html2text($message, 90, false))
                 . ($mid_token ? "\nRef-Mid: $mid_token\n" : '');
             $mime->setTXTBody($txtbody);
@@ -285,7 +301,7 @@ class Mailer {
     //Emails using native php mail function - if DB connection doesn't exist.
     //Don't use this function if you can help it.
     function sendmail($to, $subject, $message, $from) {
-        $mailer = new Mailer();
+        $mailer = new Mailer(null, array('notice'=>true, 'nobounce'=>true));
         $mailer->setFromAddress($from);
         return $mailer->send($to, $subject, $message);
     }

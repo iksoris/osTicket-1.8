@@ -509,8 +509,8 @@ $tcount+= $ticket->getNumNotes();
                 <td>
                     <select id="cannedResp" name="cannedResp">
                         <option value="0" selected="selected">Select a canned response</option>
-                        <option value='lastmessage'>Original Message</option>
-                        <option value='original'>Last Message</option>
+                        <option value='original'>Original Message</option>
+                        <option value='lastmessage'>Last Message</option>
                         <?php
                         if(($cannedResponses=Canned::responsesByDeptId($ticket->getDeptId()))) {
                             echo '<option value="0" disabled="disabled">
@@ -720,9 +720,9 @@ $tcount+= $ticket->getNumNotes();
                         }?>
                     </select>
                     &nbsp;<span class='error'>*&nbsp;<?php echo $errors['state']; ?></span>
+                    </div>
                 </td>
             </tr>
-            </div>
         </table>
 
        <p  style="padding-left:165px;">

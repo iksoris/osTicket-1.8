@@ -1045,7 +1045,7 @@ class Ticket {
         $options = array('inreplyto' => $entry->getEmailMessageId(),
                          'thread' => $entry);
         foreach ($recipients as $recipient) {
-            if ($uid == $recipient->getId()) continue;
+            if ($uid == $recipient->getUserId()) continue;
             $options['references'] =  $entry->getEmailReferencesForUser($recipient);
             $notice = $this->replaceVars($msg, array('recipient' => $recipient));
             $email->send($recipient->getEmail(), $notice['subj'], $notice['body'], $attachments,
@@ -1277,10 +1277,10 @@ class Ticket {
 
                 return $duedate;
                 break;
-            case 'close_date';
+            case 'close_date':
                 $closedate ='';
                 if($this->isClosed())
-                    $duedate = Format::date(
+                    $closedate = Format::date(
                             $cfg->getDateTimeFormat(),
                             Misc::db2gmtime($this->getCloseDate()),
                             $cfg->getTZOffset(),
@@ -2299,6 +2299,16 @@ class Ticket {
             }
         }
 
+        if ($vars['topicId']) {
+            if (($__topic=Topic::lookup($vars['topicId']))
+                && $__form = $__topic->getForm()
+            ) {
+                $__form = $__form->instanciate();
+                $__form->setSource($vars);
+                $vars += $__form->getFilterData();
+            }
+        }
+
         //Init ticket filters...
         $ticket_filter = new TicketFilter($origin, $vars);
         // Make sure email contents should not be rejected
@@ -2307,14 +2317,6 @@ class Ticket {
             return $reject_ticket(
                 sprintf('Ticket rejected ( %s) by filter "%s"',
                     $vars['email'], $filter->getName()));
-        }
-
-        if ($vars['topicId'] && ($topic=Topic::lookup($vars['topicId']))) {
-            if ($topic_form = $topic->getForm()) {
-                $topic_form = $topic_form->instanciate();
-                if (!$topic_form->getForm()->isValid($field_filter('topic')))
-                    $errors = array_merge($errors, $topic_form->getForm()->errors());
-            }
         }
 
         $id=0;
@@ -2384,6 +2386,21 @@ class Ticket {
             }
         }
 
+        if ($vars['topicId']) {
+            if ($topic=Topic::lookup($vars['topicId'])) {
+                if ($topic_form = $topic->getForm()) {
+                    $TF = $topic_form->getForm($vars);
+                    $topic_form = $topic_form->instanciate();
+                    $topic_form->setSource($vars);
+                    if (!$TF->isValid($field_filter('topic')))
+                        $errors = array_merge($errors, $TF->errors());
+                }
+            }
+            else  {
+                $errors['topicId'] = 'Invalid help topic selected';
+            }
+        }
+
         // Any error above is fatal.
         if ($errors)
             return 0;
@@ -2440,7 +2457,6 @@ class Ticket {
                 $form->setAnswer('priority', null, $topic->getPriorityId());
             if ($autorespond)
                 $autorespond = $topic->autoRespond();
-            $source = $vars['source'] ?: 'Web';
 
             //Auto assignment.
             if (!isset($vars['staffId']) && $topic->getStaffId())
@@ -2470,8 +2486,9 @@ class Ticket {
         if (!$priority || !$priority->getIdValue())
             $form->setAnswer('priority', null, $cfg->getDefaultPriorityId());
         $deptId = $deptId ?: $cfg->getDefaultDeptId();
-        $topicId = $vars['topicId'] ?: 0;
+        $topicId = isset($topic) ? $topic->getId() : 0;
         $ipaddress = $vars['ip'] ?: $_SERVER['REMOTE_ADDR'];
+        $source = $source ?: 'Web';
 
         //We are ready son...hold on to the rails.
         $number = Ticket::genRandTicketNumber();

@@ -368,6 +368,24 @@ Signal::connect('model.updated',
     function($o, $d) { return isset($d['dirty'])
         && (isset($d['dirty']['name']) || isset($d['dirty']['type'])); });
 
+Filter::addSupportedMatches(/* trans */ 'Custom Forms', function() {
+    $matches = array();
+    foreach (DynamicForm::objects()->filter(array('type'=>'G')) as $form) {
+        foreach ($form->getFields() as $f) {
+            if (!$f->hasData())
+                continue;
+            $matches['field.'.$f->get('id')] = $form->getTitle().' / '.$f->getLabel();
+            if (($fi = $f->getImpl()) instanceof SelectionField) {
+                foreach ($fi->getList()->getProperties() as $p) {
+                    $matches['field.'.$f->get('id').'.'.$p->get('id')]
+                        = $form->getTitle().' / '.$f->getLabel().' / '.$p->getLabel();
+                }
+            }
+        }
+    }
+    return $matches;
+}, 9900);
+
 require_once(INCLUDE_DIR . "class.json.php");
 
 class DynamicFormField extends VerySimpleModel {
@@ -519,6 +537,7 @@ class DynamicFormEntry extends VerySimpleModel {
     var $_form;
     var $_errors = false;
     var $_clean = false;
+    var $_source = null;
 
     function getId() {
         return $this->get('id');
@@ -572,10 +591,19 @@ class DynamicFormEntry extends VerySimpleModel {
     function getFields() {
         if (!isset($this->_fields)) {
             $this->_fields = array();
-            foreach ($this->getAnswers() as $a)
-                $this->_fields[] = $a->getField();
+            foreach ($this->getAnswers() as $a) {
+                $T = $this->_fields[] = $a->getField();
+                $T->setForm($this);
+            }
         }
         return $this->_fields;
+    }
+
+    function getSource() {
+        return $this->_source ?: (isset($this->id) ? false : $_POST);
+    }
+    function setSource($source) {
+        $this->_source = $source;
     }
 
     function getField($name) {
@@ -768,8 +796,8 @@ class DynamicFormEntry extends VerySimpleModel {
         if (count($this->dirty))
             $this->set('updated', new SqlFunction('NOW'));
         parent::save();
-        foreach ($this->getAnswers() as $a) {
-            $field = $a->getField();
+        foreach ($this->getFields() as $field) {
+            $a = $field->getAnswer();
             if ($this->object_type == 'U'
                     && in_array($field->get('name'), array('name','email')))
                 continue;
@@ -1159,17 +1187,20 @@ class SelectionField extends FormField {
     function parse($value) {
         $config = $this->getConfiguration();
         if (is_int($value))
-            return $this->to_php($this->getWidget()->getEnteredValue(), (int) $value);
+            $val = $this->to_php($this->getWidget()->getEnteredValue(), (int) $value);
         elseif (!$config['typeahead'])
-            return $this->to_php(null, (int) $value);
-        else
-            return $this->to_php($value);
+            $val = $this->to_php(null, (int) $value);
+        if (!$val)
+            $val = $this->to_php($value);
+        return $val;
     }
 
     function to_php($value, $id=false) {
         if ($value === null && $id === null)
             return null;
-        if ($id && is_int($id))
+        if ($value instanceof DynamicListItem)
+            $item = $value;
+        elseif ($id && is_int($id))
             $item = DynamicListItem::lookup($id);
         # Attempt item lookup by name too
         if (!$item || ($value !== null && $value != $item->get('value'))) {
@@ -1227,8 +1258,8 @@ class SelectionField extends FormField {
             foreach ($this->getList()->getItems() as $i)
                 $this->_choices[$i->get('id')] = $i->get('value');
             if ($this->value && !isset($this->_choices[$this->value])) {
-                $v = DynamicListItem::lookup($this->value);
-                $this->_choices[$v->get('id')] = $v->get('value').' (Disabled)';
+                if ($v = DynamicListItem::lookup($this->value))
+                    $this->_choices[$v->get('id')] = $v->get('value').' (Disabled)';
             }
         }
         return $this->_choices;

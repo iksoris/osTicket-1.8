@@ -390,15 +390,15 @@ class TicketsAjaxAPI extends AjaxController {
         if ($user) {
             if ($user->getId() == $ticket->getOwnerId())
                 $errors['err'] = sprintf('Ticket owner, %s, is a collaborator by default!',
-                        $user->getName());
+                        Format::htmlchars($user->getName()));
             elseif (($c=$ticket->addCollaborator($user,
                             array('isactive'=>1), $errors))) {
                 $note = Format::htmlchars(sprintf('%s <%s> added as a collaborator',
-                            $c->getName(), $c->getEmail()));
+                            Format::htmlchars($c->getName()), $c->getEmail()));
                 $ticket->logNote('New Collaborator Added', $note,
                     $thisstaff, false);
                 $info = array('msg' => sprintf('%s added as a collaborator',
-                            $c->getName()));
+                            Format::htmlchars($c->getName())));
                 return self::_collaborators($ticket, $info);
             }
         }
@@ -427,7 +427,7 @@ class TicketsAjaxAPI extends AjaxController {
             return self::_collaborator($c ,$user->getForms($_POST), $errors);
 
         $info = array('msg' => sprintf('%s updated successfully',
-                    $c->getName()));
+                    Format::htmlchars($c->getName())));
 
         return self::_collaborators($ticket, $info);
     }
@@ -671,9 +671,12 @@ class TicketsAjaxAPI extends AjaxController {
 
             // Ticket thread variables are assumed to be quotes
             $response = "<br/><blockquote>$response</blockquote><br/>";
+
             //  Return text if html thread is not enabled
             if (!$cfg->isHtmlThreadEnabled())
                 $response = Format::html2text($response, 90);
+            else
+                $response = Format::viewableImages($response);
 
             // XXX: assuming json format for now.
             return Format::json_encode(array('response' => $response));

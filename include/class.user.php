@@ -157,7 +157,7 @@ class User extends UserModel {
                 list($name) = explode('@', $vars['email'], 2);
 
             $user = User::create(array(
-                'name' => Format::sanitize($name, false),
+                'name' => Format::htmldecode(Format::sanitize($name, false)),
                 'created' => new SqlFunction('NOW'),
                 'updated' => new SqlFunction('NOW'),
                 //XXX: Do plain create once the cause
@@ -456,6 +456,8 @@ class User extends UserModel {
 
     function importFromPost($stuff, $extra=array()) {
         if (is_array($stuff) && !$stuff['error']) {
+            // Properly detect Macintosh style line endings
+            ini_set('auto_detect_line_endings', true);
             $stream = fopen($stuff['tmp_name'], 'r');
         }
         elseif ($stuff) {
@@ -473,12 +475,13 @@ class User extends UserModel {
     function updateInfo($vars, &$errors) {
 
         $valid = true;
-        $forms = $this->getForms($vars);
+        $forms = $this->getDynamicData();
         foreach ($forms as $cd) {
-            if (!$cd->isValid())
+            $cd->setSource($vars);
+            if (!$cd->isValidForClient())
                 $valid = false;
-            if ($cd->get('type') == 'U'
-                        && ($form= $cd->getForm($vars))
+            elseif ($cd->get('type') == 'U'
+                        && ($form= $cd->getForm())
                         && ($f=$form->getField('email'))
                         && $f->getClean()
                         && ($u=User::lookup(array('emails__address'=>$f->getClean())))
