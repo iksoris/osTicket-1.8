@@ -216,7 +216,7 @@ if($_GET['limit'])
 $qselect ='SELECT ticket.ticket_id,tlock.lock_id,ticket.`number`,ticket.dept_id,ticket.staff_id,ticket.team_id '
     .' ,user.name'
     .' ,email.address as email, dept.dept_name, status.state '
-         .' ,status.name as status,ticket.source,ticket.isoverdue,ticket.isanswered,ticket.created ';
+         .' ,status.name as status,status.id as status_id,ticket.source,ticket.isoverdue,ticket.isanswered,ticket.created ';
 
 $qfrom=' FROM '.TICKET_TABLE.' ticket '.
        ' LEFT JOIN '.TICKET_STATUS_TABLE. ' status
@@ -370,8 +370,10 @@ if ($results) {
             <th width="170">
                 <a <?php echo $name_sort; ?> href="tickets.php?sort=name&order=<?php echo $negorder; ?><?php echo $qstr; ?>"
                      title="<?php echo sprintf(__('Sort by %s %s'), __('Name'), __($negorder)); ?>"><?php echo __('From');?></a></th>
+							
             <?php
-            if($search && !$status) { ?>
+				/*if($search && !$status) { ?>*/
+            if(true) { ?>
                 <th width="60">
                     <a <?php echo $status_sort; ?> href="tickets.php?sort=status&order=<?php echo $negorder; ?><?php echo $qstr; ?>"
                         title="<?php echo sprintf(__('Sort by %s %s'), __('Status'), __($negorder)); ?>"><?php echo __('Status');?></a></th>
@@ -441,7 +443,7 @@ if ($results) {
                     $tid=sprintf('<b>%s</b>',$tid);
                 }
                 ?>
-            <tr id="<?php echo $row['ticket_id']; ?>">
+            <tr id="<?php echo $row['ticket_id']; ?>" >
                 <?php if($thisstaff->canManageTickets()) {
 
                     $sel=false;
@@ -471,11 +473,12 @@ if ($results) {
                 </td>
                 <td nowrap>&nbsp;<?php echo Format::truncate($row['name'],22,strpos($row['name'],'@')); ?>&nbsp;</td>
                 <?php
-                if($search && !$status){
+/*                if($search && !$status){*/
+						if(true) {
                     $displaystatus=ucfirst($row['status']);
                     if(!strcasecmp($row['state'],'open'))
-                        $displaystatus="<b>$displaystatus</b>";
-                    echo "<td>$displaystatus</td>";
+                        $displaystatus="<b>$displaystatus</b>";								
+                    echo "<td class=\"status".$row['status_id']."\">$displaystatus</td>";
                 } else { ?>
                 <td class="nohover" align="center" style="background-color:<?php echo $row['priority_color']; ?>;">
                     <?php echo $row['priority_desc']; ?></td>
