@@ -216,7 +216,7 @@ if($_GET['limit'])
 $qselect ='SELECT ticket.ticket_id,tlock.lock_id,ticket.`number`,ticket.dept_id,ticket.staff_id,ticket.team_id '
     .' ,user.name'
     .' ,email.address as email, dept.dept_name, status.state '
-         .' ,status.name as status,status.id as status_id,ticket.source,ticket.isoverdue,ticket.isanswered,ticket.created ';
+         .' ,status.name as status,status.id as status_id,status.properties as status_properties,ticket.source,ticket.isoverdue,ticket.isanswered,ticket.created ';
 
 $qfrom=' FROM '.TICKET_TABLE.' ticket '.
        ' LEFT JOIN '.TICKET_STATUS_TABLE. ' status
@@ -370,7 +370,7 @@ if ($results) {
             <th width="170">
                 <a <?php echo $name_sort; ?> href="tickets.php?sort=name&order=<?php echo $negorder; ?><?php echo $qstr; ?>"
                      title="<?php echo sprintf(__('Sort by %s %s'), __('Name'), __($negorder)); ?>"><?php echo __('From');?></a></th>
-							
+
             <?php
 				/*if($search && !$status) { ?>*/
             if(true) { ?>
@@ -477,8 +477,12 @@ if ($results) {
 						if(true) {
                     $displaystatus=ucfirst($row['status']);
                     if(!strcasecmp($row['state'],'open'))
-                        $displaystatus="<b>$displaystatus</b>";								
-                    echo "<td class=\"status".$row['status_id']."\">$displaystatus</td>";
+                        $displaystatus="<b>$displaystatus</b>";
+								if(defined('STATUS_ID_WLASCIWOSCI_KOLOR') && $row['status_properties'] && strpos($row['status_properties'],"\"".STATUS_ID_WLASCIWOSCI_KOLOR."\":\"")){
+									$kolor = substr($row['status_properties'],strpos($row['status_properties'],"\"".STATUS_ID_WLASCIWOSCI_KOLOR."\":\"")+6,7);//
+		                     echo "<td style=\"background-color:".$kolor."\">$displaystatus</td>";
+								}
+								else echo "<td>$displaystatus</td>";
                 } else { ?>
                 <td class="nohover" align="center" style="background-color:<?php echo $row['priority_color']; ?>;">
                     <?php echo $row['priority_desc']; ?></td>
